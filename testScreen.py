@@ -1,5 +1,5 @@
 import urwid
-from testScreen4 import BoxButton
+from boxbutton import BoxButton
 from UrwidZMQ import ZmqEventLoop
 choices = ['Chapman', 'Clesse', 'Gilliam', 'Idle', 'Jones', 'Palin']
 

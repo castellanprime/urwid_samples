@@ -193,7 +193,7 @@ class MainMenuPage(urwid.WidgetWrap):
 		self._parent = parent
 		super().__init__(self.btn_list)
 
-	def create_new_game(self):
+	def create_new_game(self, *args, **kwargs):
 		self._parent.go_to_pane(NEW_GAME_PAGE)
 
 	def join_game(self):
@@ -238,11 +238,76 @@ class NewGamePage(urwid.WidgetWrap):
 	def create_game(self, *args, **kwargs):
 		self._parent.go_to_pane(PLAYER_LOBBY)
 
+# This is where the error is
 class PlayerLobby(urwid.WidgetWrap):
 	def __init__(self, parent):
-		self.lobbylist = [dict(game_name='FireBolt', players=['e', 'f', 'g']),
-			dict(game_name='FireBolt2', players=['e', 'f', 'g'])]
-		self.
+		self.games = [dict(game_name='FireBolt', players=['Earl', 'Phineas', 'Tucker']),
+			dict(game_name='FireBolt2', players=['Carlson', 'Ben', 'Kevlin'])
+		]
+		self.players_pane = self.generate_pane_widget('players')
+		self.game_pane = self.generate_pane_widget('game')
+		self._parent = parent
+		self.status_box = urwid.Text(u'')
+		middle_col = self.generate_middle_col()
+		self.widgets = urwid.Pile([
+			urwid.Columns([
+				('weight', 3, self.game_pane),
+				('weight', 2,  middle_col),
+				('weight', 3, self.players_pane)
+			]),
+			urwid.Padding(
+				urwid.Columns([
+					('pack', self.status_box),
+					('pack', BoxButton(u'Join', on_press=self.join_game))
+				])
+				, align='right'
+			)
+		])
+		super().__init__(self.widgets)
+        
+
+	def generate_middle_col(self, *args, **kwargs):
+		return urwid.Filler(
+			urwid.Pile([
+				BoxButton('+', on_press=self.add_player_to_game),
+				BoxButton('-', on_press=self.remove_player_from_game)
+			])
+		)
+            
+	def join_game(self, *args, **kwargs):
+		w = [widget.get_text() for widget in list(self.players_pane._original_widget._get_body())]
+		if 'Mike' in w:
+			self._parent.go_to_pane(PLAYER_GAME_PAGE)
+		else:
+			self.set_status_text(u'Need to add yourself in the game')
+            
+	def set_status_text(self, text, *args, **kwargs):
+		self.status_box.set_text(text)
+    
+	def add_player_to_game(self, *args, **kwargs):
+		self.players_pane._original_widget._get_body().append(urwid.Text('Mike'))
+		if len(self.status_box.get_text()) != 0:
+			self.set_status_text('')
+		self._invalidate()
+        
+	def remove_player_from_game(self, *args, **kwargs):
+		self.players_pane._original_widget._get_body().pop()
+		self._invalidate()
+
+	def generate_pane_widget(self, pane_type, *args, **kwargs):
+		if pane_type == 'game':
+			body = [urwid.Text(game.get('game_name')) for game in self.games]
+			widget = urwid.SimpleFocusListWalker(body)
+			widget.set_focus_changed_callback(lambda f: self.change_list_items(f))
+			return urwid.LineBox(urwid.ListBox(widget))
+		elif pane_type == 'players':
+			body = [urwid.Text(player) for player in self.games[0].get('players')]
+			return urwid.LineBox(urwid.ListBox(urwid.SimpleFocusListWalker(body)))
+
+	def change_list_items(self, num, *args, **kwargs):
+		body = [urwid.Text(player) for player in self.games[num].get('players')]
+		self.players_pane._original_widget._set_body(urwid.SimpleFocusListWalker(body))
+		self._invalidate()
 
 class PlayerGamePage(urwid.WidgetWrap):
 	pass
@@ -261,7 +326,7 @@ class Window(urwid.Frame):
 			LANDING_PAGE=LandingPage(self),
 			MAIN_MENU=MainMenuPage(self),
 			NEW_GAME_PAGE=NewGamePage(self),
-			# PLAYER_LOBBY=PlayerLobby(self),
+			PLAYER_LOBBY=PlayerLobby(self),
 			# PLAYER_GAME_PAGE=PlayerGamePage(self)
 		)
 		self.body = urwid.LineBox(self.panes.get(LANDING_PAGE))
